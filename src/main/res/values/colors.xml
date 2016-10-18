@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#535353</color>
+    <color name="colorPrimaryDark">#535353</color>
+    <color name="colorAccent">#535353</color>
+    <color name="bottomBarBackground">#535353</color>
+    <color name="bottomBarText">#868686</color>
+    <color name="bottomTopText">#989898</color>
+    <color name="bottomButton">#AAAAAA</color>
+    <color name="bottomWhite">#FFFFFF</color>
+
+</resources>
