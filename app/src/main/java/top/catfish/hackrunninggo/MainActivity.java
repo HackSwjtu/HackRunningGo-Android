@@ -7,6 +7,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     MapView mMapView = null;
     BaiduMap mBaiduMap = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,37 +51,40 @@ public class MainActivity extends AppCompatActivity
         mMapView = (MapView) findViewById(R.id.bMapView);
         mBaiduMap = mMapView.getMap();
 
-        float lat = 30.771025f,lon = 103.985729f;
+        float lat = 30.771025f, lon = 103.985729f;
         LatLng p = new LatLng(lat, lon);
+
         MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(19)
                 .build();
         MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
                 .newMapStatus(mMapStatus);
-        mBaiduMap.setMapStatus(mMapStatusUpdate);
-
-        List<LatLng> list = new ArrayList<>();
-        list.add(new LatLng(30.771025,103.985729));
-        list.add(new LatLng(30.768689,103.987363));
-        list.add(new LatLng(30.772452,103.988140));
-        list.add(new LatLng(30.768565,103.989981));
-        list.add(new LatLng(30.765339,103.990071));
-        PathDrawer pathDrawer = new PathDrawer(mBaiduMap);
-        pathDrawer.drawPath(list);
+        mBaiduMap.animateMapStatus(mMapStatusUpdate);
 
 
-        // textView1 = (TextView)findViewById(R.id.textLocation);
-        Button btn  = (Button)findViewById(R.id.startButton);
+        Button btn = (Button) findViewById(R.id.startBtn);
+
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MapStatus status = mBaiduMap.getMapStatus();
-                Toast.makeText(getApplicationContext(),status.toString(),Toast.LENGTH_LONG).show();
+                List<LatLng> list = new ArrayList<>();
+                list.add(new LatLng(30.771025, 103.985729));
+                list.add(new LatLng(30.768689, 103.987363));
+                list.add(new LatLng(30.772452, 103.988140));
+                list.add(new LatLng(30.768565, 103.989981));
+                list.add(new LatLng(30.765339, 103.990071));
+                fitMapStatus(list);
+                PathPainter pathPainter = new PathPainter(mBaiduMap, MainActivity.this);
+                pathPainter.drawPath(list);
+                //Toast.makeText(getApplicationContext(), "Search!", Toast.LENGTH_LONG).show();
+
             }
         });
 
         //textView1.setText(status.toString());
+    }
 
-
+    public BaiduMap getBaiduMap() {
+        return this.mBaiduMap;
     }
 
     @Override
@@ -107,7 +112,8 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            Toast.makeText(this, "setting", Toast.LENGTH_LONG).show();
+            MapStatus status = mBaiduMap.getMapStatus();
+            Toast.makeText(this, status.toString(), Toast.LENGTH_LONG).show();
         }
 
         return super.onOptionsItemSelected(item);
@@ -157,6 +163,54 @@ public class MainActivity extends AppCompatActivity
         super.onPause();
         //在activity执行onPause时执行mMapView. onPause ()，实现地图生命周期管理
         mMapView.onPause();
+    }
+
+    public void setTextView(int id, String msg) {
+        TextView tv = (TextView) this.findViewById(id);
+        tv.setText(msg);
+    }
+    public void fitMapStatus(List<LatLng> list){
+        double avgLat=0,avgLon=0,maxDis = Double.MIN_VALUE;
+        for(int i=0;i<list.size();i++){
+            avgLat += list.get(i).latitude;
+            avgLon += list.get(i).longitude;
+        }
+        avgLat/=list.size();
+        avgLon/=list.size();
+        for(int i=0;i<list.size();i++){
+            for(int j=i+1;j<list.size();j++){
+                double dis = getDistance(list.get(i),list.get(j));
+                if(dis>maxDis)
+                    maxDis = dis;
+            }
+        }
+        int disData[]={2000000,1000000,500000,200000,100000,50000,25000,20000,10000,5000,2000,1000,500,200,100,50,20,10};
+        int status = 3;
+        while(disData[status]>maxDis){
+            status++;
+            if(status>15) {
+                status = 15;
+                break;
+            }
+        }
+        LatLng p = new LatLng(avgLat,avgLon);
+        MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(status+5)
+                .build();
+        MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
+                .newMapStatus(mMapStatus);
+        mBaiduMap.animateMapStatus(mMapStatusUpdate);
+        Log.e("distance",String.valueOf(maxDis));
+    }
+    private double getDistance(LatLng p1,LatLng p2) {
+        double radLat1 = Math.toRadians (p1.latitude);
+        double radLat2 = Math.toRadians (p2.latitude);
+        double a = radLat1 - radLat2;
+        double b = Math.toRadians (p1.longitude) - Math.toRadians (p2.longitude);
+        double s = 2 * Math. asin(Math .sqrt(
+                Math.pow (Math. sin(a / 2), 2) + Math.cos (radLat1) * Math.cos (radLat2) * Math.pow (Math. sin(b / 2), 2))) ;
+        s = s * 6378137.0 ;// 取WGS84标准参考椭球中的地球长半径(单位:m)
+        s = Math. round(s * 10000) / 10000 ;
+        return s ;
     }
 }
 
