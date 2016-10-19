@@ -66,7 +66,7 @@ public class PathPainter {
                     activity.setTextView(R.id.distanceText,String.valueOf(distance)+"M");
                     activity.setTextView(R.id.durationText,String.valueOf(duration/60)+"min");
                     activity.setTextView(R.id.speedText,String.valueOf(Double.valueOf(distance*1.0/1000/(duration*1.0/3600)).intValue())+"KM/H");
-                    Log.e("distance",String.valueOf(routeLine.getDistance()));
+                    Log.e("distance",String.valueOf("route"+i+":"+routeLine.getDistance()));
                     List<WalkingRouteLine.WalkingStep> steps = routeLine.getAllStep();
                     for (int j = 0; j < steps.size(); j++) {
                         WalkingRouteLine.WalkingStep step = steps.get(j);
