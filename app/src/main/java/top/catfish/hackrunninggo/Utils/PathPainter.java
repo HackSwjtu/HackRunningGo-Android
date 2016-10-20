@@ -1,4 +1,4 @@
-package top.catfish.hackrunninggo;
+package top.catfish.hackrunninggo.Utils;
 
 import android.util.Log;
 
@@ -24,8 +24,11 @@ import com.baidu.mapapi.search.route.WalkingRouteResult;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by Administrator on 2016/10/19.
+import top.catfish.hackrunninggo.MainActivity;
+import top.catfish.hackrunninggo.R;
+
+/*
+ * Created by Catfish on 2016/10/19.
  */
 
 public class PathPainter {

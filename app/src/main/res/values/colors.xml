@@ -8,5 +8,5 @@
     <color name="bottomTopText">#989898</color>
     <color name="bottomButton">#AAAAAA</color>
     <color name="bottomWhite">#FFFFFF</color>
-
+    <color name="primaryBlue">#0F92EE</color>
 </resources>

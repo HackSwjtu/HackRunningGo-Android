@@ -1,19 +1,19 @@
 package top.catfish.hackrunninggo;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
@@ -21,40 +21,51 @@ import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
+import com.baidu.mapapi.map.Text;
 import com.baidu.mapapi.model.LatLng;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity
+import top.catfish.hackrunninggo.Utils.PathPainter;
+import top.catfish.hackrunninggo.Utils.Util;
+
+public class MainActivity extends BaseAppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     MapView mMapView = null;
     BaiduMap mBaiduMap = null;
-
+    String username = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
+
         //BaiduMap
         SDKInitializer.initialize(getApplicationContext());
         setContentView(R.layout.activity_main);
+        username = sharedPreferences.getString(Util.spLoginUsername,
+                "Name");
+        TextView usernameTextView = (TextView)findViewById(R.id.username_text);
+        usernameTextView.setText(username);
+        //SlideBar Init
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
+        drawer.addDrawerListener(toggle);
         toggle.syncState();
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        //BaiduMap init
         mMapView = (MapView) findViewById(R.id.bMapView);
         mBaiduMap = mMapView.getMap();
-
-        float lat = 30.771025f, lon = 103.985729f;
+        double lat = 30.770331, lon = 103.992012;
         LatLng p = new LatLng(lat, lon);
-
-        MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(19)
+        MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(17)
                 .build();
         MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
                 .newMapStatus(mMapStatus);
@@ -66,6 +77,7 @@ public class MainActivity extends AppCompatActivity
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 List<LatLng> list = new ArrayList<>();
                 list.add(new LatLng(30.771025, 103.985729));
                 list.add(new LatLng(30.768689, 103.987363));
@@ -82,7 +94,6 @@ public class MainActivity extends AppCompatActivity
 
         //textView1.setText(status.toString());
     }
-
     public BaiduMap getBaiduMap() {
         return this.mBaiduMap;
     }
@@ -98,45 +109,23 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            MapStatus status = mBaiduMap.getMapStatus();
-            Toast.makeText(this, status.toString(), Toast.LENGTH_LONG).show();
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @SuppressWarnings("StatementWithEmptyBody")
-    @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
+        if (id == R.id.nav_path) {
 
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
+        } else if (id == R.id.nav_logout) {
+            SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.remove(Util.spLoginStamp);
+            boolean flag = editor.commit();
+            Intent intent = new Intent();
+            intent.setClass(this,LoginActivity.class);
+            startActivity(intent);
+            finish();
+        } else if (id == R.id.nav_exit) {
+            exitApp();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -212,5 +201,7 @@ public class MainActivity extends AppCompatActivity
         s = Math. round(s * 10000) / 10000 ;
         return s ;
     }
+
+
 }
 
