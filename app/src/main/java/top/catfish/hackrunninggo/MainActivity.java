@@ -1,5 +1,6 @@
 package top.catfish.hackrunninggo;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -8,10 +9,15 @@ import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.OrientationHelper;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -21,7 +27,6 @@ import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
-import com.baidu.mapapi.map.Text;
 import com.baidu.mapapi.model.LatLng;
 
 import java.util.ArrayList;
@@ -29,12 +34,15 @@ import java.util.List;
 
 import top.catfish.hackrunninggo.Utils.PathPainter;
 import top.catfish.hackrunninggo.Utils.Util;
+import top.catfish.hackrunninggo.adapter.RouteAdapter;
+import top.catfish.hackrunninggo.dao.Route;
 
 public class MainActivity extends BaseAppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     MapView mMapView = null;
     BaiduMap mBaiduMap = null;
     String username = null;
+    List<Route> lists = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,7 +100,8 @@ public class MainActivity extends BaseAppCompatActivity
             }
         });
 
-        //textView1.setText(status.toString());
+        getData();
+        Log.e("list",lists.toString());
     }
     public BaiduMap getBaiduMap() {
         return this.mBaiduMap;
@@ -114,6 +123,19 @@ public class MainActivity extends BaseAppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_path) {
+
+            LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+            View layout = inflater.inflate(R.layout.popup_view, (ViewGroup)findViewById(R.id.popup_window_layout));
+            RecyclerView mView = (RecyclerView)layout.findViewById(R.id.pupup_recyclerView);
+            mView.setHasFixedSize(true);
+            LinearLayoutManager mLayoutManager = new LinearLayoutManager(this);
+            mLayoutManager.setOrientation(OrientationHelper.VERTICAL);
+            mView.setLayoutManager(mLayoutManager);
+            mView.setAdapter(new RouteAdapter(MainActivity.this,lists));
+            AlertDialog.Builder  builder= new AlertDialog.Builder(MainActivity.this);
+            builder.setView(layout);
+            AlertDialog dialog = builder.create();
+            dialog.show();
 
         } else if (id == R.id.nav_logout) {
             SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
@@ -203,5 +225,12 @@ public class MainActivity extends BaseAppCompatActivity
     }
 
 
+    public void getData() {
+        lists = new ArrayList<>();
+        for(int i=0;i<30;i++){
+            Route route = new Route("Hello "+i);
+            lists.add(route);
+        }
+    }
 }
 
