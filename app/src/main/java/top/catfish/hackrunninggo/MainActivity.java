@@ -4,8 +4,11 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Point;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -14,12 +17,16 @@ import android.support.v7.widget.OrientationHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Display;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
@@ -29,6 +36,16 @@ import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.model.LatLng;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,6 +60,11 @@ public class MainActivity extends BaseAppCompatActivity
     BaiduMap mBaiduMap = null;
     String username = null;
     List<Route> lists = null;
+    AlertDialog dialog = null;
+    LinearLayoutManager mLayoutManager = null;
+    RouteAdapter routeAdapter = null;
+    TextView routeNameTextView = null;
+    PathPainter painter = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +77,7 @@ public class MainActivity extends BaseAppCompatActivity
                 "Name");
         TextView usernameTextView = (TextView)findViewById(R.id.username_text);
         usernameTextView.setText(username);
+        routeNameTextView = (TextView)this.findViewById(R.id.location_name_text);
         //SlideBar Init
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -78,33 +101,64 @@ public class MainActivity extends BaseAppCompatActivity
         MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
                 .newMapStatus(mMapStatus);
         mBaiduMap.animateMapStatus(mMapStatusUpdate);
-
+        painter = new PathPainter(mBaiduMap, MainActivity.this);
 
         Button btn = (Button) findViewById(R.id.startBtn);
 
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
-                List<LatLng> list = new ArrayList<>();
-                list.add(new LatLng(30.771025, 103.985729));
-                list.add(new LatLng(30.768689, 103.987363));
-                list.add(new LatLng(30.772452, 103.988140));
-                list.add(new LatLng(30.768565, 103.989981));
-                list.add(new LatLng(30.765339, 103.990071));
-                fitMapStatus(list);
-                PathPainter pathPainter = new PathPainter(mBaiduMap, MainActivity.this);
-                pathPainter.drawPath(list);
-                //Toast.makeText(getApplicationContext(), "Search!", Toast.LENGTH_LONG).show();
-
+                Toast.makeText(MainActivity.this,"Start!",Toast.LENGTH_SHORT);
             }
         });
 
         getData();
-        Log.e("list",lists.toString());
-    }
-    public BaiduMap getBaiduMap() {
-        return this.mBaiduMap;
+        //Dialog
+        LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        View layout = inflater.inflate(R.layout.popup_view, (ViewGroup)findViewById(R.id.popup_window_layout));
+        RecyclerView mView = (RecyclerView)layout.findViewById(R.id.pupup_recyclerView);
+        mView.setHasFixedSize(true);
+        mLayoutManager = new LinearLayoutManager(this);
+        mLayoutManager.setOrientation(OrientationHelper.VERTICAL);
+        mView.setLayoutManager(mLayoutManager);
+        routeAdapter = new RouteAdapter(MainActivity.this,lists);
+        routeAdapter.setOnItemClickListener(new RouteAdapter.OnRecyclerViewItemClickListener() {
+            @Override
+            public void onItemClick(View view, String data) {
+                //Log.i("view type",String.valueOf(view.getId()));
+
+
+                int pos = Integer.valueOf((String)view.getTag());
+                Snackbar.make(MainActivity.this.getCurrentFocus(), "Count:"+mLayoutManager.getItemCount()+" pos:"+view.getTag(), Snackbar.LENGTH_SHORT).show();
+                View tView = mLayoutManager.findViewByPosition(pos);
+                for(int i=0;i<mLayoutManager.getChildCount();i++){
+                    RouteAdapter.ViewHolder tViewHolder = new RouteAdapter.ViewHolder(mLayoutManager.getChildAt(i));
+                    tViewHolder.image.setVisibility(View.GONE);
+                }
+                RouteAdapter.ViewHolder viewHolder = new RouteAdapter.ViewHolder(tView);
+                if(pos == routeAdapter.selectPos){
+                    routeAdapter.selectPos = -1;
+                    mBaiduMap.clear();
+                    routeNameTextView.setText("");
+                    setTextView(R.id.distanceText, "0M");
+                    setTextView(R.id.durationText, "0min");
+                    setTextView(R.id.speedText, "0KM/H");
+                }else{
+                    viewHolder.image.setVisibility(View.VISIBLE);
+                    routeAdapter.selectPos = pos;
+                    Route route = lists.get(pos);
+                    painter.drawPath(route);
+                    fitMapStatus(route);
+                    routeNameTextView.setText(route.getName());
+                }
+                dialog.dismiss();
+
+            }
+        });
+        mView.setAdapter(routeAdapter);
+        AlertDialog.Builder  builder= new AlertDialog.Builder(MainActivity.this);
+        builder.setView(layout);
+        dialog = builder.create();
     }
 
     @Override
@@ -118,24 +172,21 @@ public class MainActivity extends BaseAppCompatActivity
     }
 
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
         if (id == R.id.nav_path) {
-
-            LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
-            View layout = inflater.inflate(R.layout.popup_view, (ViewGroup)findViewById(R.id.popup_window_layout));
-            RecyclerView mView = (RecyclerView)layout.findViewById(R.id.pupup_recyclerView);
-            mView.setHasFixedSize(true);
-            LinearLayoutManager mLayoutManager = new LinearLayoutManager(this);
-            mLayoutManager.setOrientation(OrientationHelper.VERTICAL);
-            mView.setLayoutManager(mLayoutManager);
-            mView.setAdapter(new RouteAdapter(MainActivity.this,lists));
-            AlertDialog.Builder  builder= new AlertDialog.Builder(MainActivity.this);
-            builder.setView(layout);
-            AlertDialog dialog = builder.create();
             dialog.show();
+            WindowManager m = getWindowManager();
+            Display d = m.getDefaultDisplay();  //为获取屏幕宽、高
+            android.view.WindowManager.LayoutParams p = dialog.getWindow().getAttributes();  //获取对话框当前的参数值
+            Point a = new Point();
+            d.getSize(a);
+            p.height = (int) (a.x * 0.7);   //高度设置为屏幕的0.3
+            p.width = (int) (a.y * 0.5);    //宽度设置为屏幕的0.5
+            p.gravity = Gravity.CENTER_HORIZONTAL;
+            dialog.getWindow().setAttributes(p);     //设置生效
 
         } else if (id == R.id.nav_logout) {
             SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
@@ -180,7 +231,8 @@ public class MainActivity extends BaseAppCompatActivity
         TextView tv = (TextView) this.findViewById(id);
         tv.setText(msg);
     }
-    public void fitMapStatus(List<LatLng> list){
+    public void fitMapStatus(Route route){
+        List<LatLng> list = route.getList();
         double avgLat=0,avgLon=0,maxDis = Double.MIN_VALUE;
         for(int i=0;i<list.size();i++){
             avgLat += list.get(i).latitude;
@@ -227,10 +279,28 @@ public class MainActivity extends BaseAppCompatActivity
 
     public void getData() {
         lists = new ArrayList<>();
-        for(int i=0;i<30;i++){
-            Route route = new Route("Hello "+i);
-            lists.add(route);
+        InputStream is = getResources().openRawResource(R.raw.route);
+        try {
+            InputStreamReader isr = new InputStreamReader(is,"utf8");
+            BufferedReader br = new BufferedReader(isr);
+            int count = Integer.parseInt(br.readLine());
+            for(int i=0;i<count;i++){
+                int n = Integer.valueOf(br.readLine());
+                String name  = br.readLine();
+                List<LatLng> list = new ArrayList<>();
+                for(int j=0;j<n;j++) {
+                    String data = br.readLine();
+                    String[] datas = data.split(" ");
+                    LatLng latLng = new LatLng(Double.valueOf(datas[1]), Double.valueOf(datas[0]));
+                    list.add(latLng);
+                }
+                Route route = new Route(name,list);
+                lists.add(route);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
     }
 }
 

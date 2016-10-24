@@ -53,6 +53,7 @@
                     android:text="Speed"
                     android:textColor="@color/bottomTopText"
                     android:textSize="20sp" />
+
                 <TextView
                     android:id="@+id/speedText"
                     android:layout_width="match_parent"
@@ -135,7 +136,7 @@
                 android:textColor="@color/bottomBarText" />
 
             <TextView
-                android:id="@+id/textLocationName"
+                android:id="@+id/location_name_text"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_weight="9"

@@ -26,6 +26,7 @@ import java.util.List;
 
 import top.catfish.hackrunninggo.MainActivity;
 import top.catfish.hackrunninggo.R;
+import top.catfish.hackrunninggo.dao.Route;
 
 /*
  * Created by Catfish on 2016/10/19.
@@ -37,23 +38,55 @@ public class PathPainter {
     private LatLng last;
     private int distance;
     private int duration;
+    private List<LatLng> list;
+
+    private List<BitmapDescriptor> bitmaps;
+    private BitmapDescriptor bitmap_st, bitmap_en;
 
     public PathPainter(BaiduMap map, MainActivity activity) {
         this.map = map;
         this.activity = activity;
         distance = 0;
         duration = 0;
+        initData();
     }
 
-    public void drawPath(List<LatLng> list) {
+    public void initData() {
+        bitmaps = new ArrayList<>();
+        bitmap_st = BitmapDescriptorFactory
+                .fromResource(R.drawable.icon_st);
+        bitmap_en = BitmapDescriptorFactory
+                .fromResource(R.drawable.icon_en);
+        List<Integer> ress = new ArrayList<>();
+        ress.add(R.drawable.icon_gcoding);
+        ress.add(R.drawable.icon_marka);
+        ress.add(R.drawable.icon_markb);
+        ress.add(R.drawable.icon_markc);
+        ress.add(R.drawable.icon_markd);
+        ress.add(R.drawable.icon_marke);
+        ress.add(R.drawable.icon_markf);
+        ress.add(R.drawable.icon_markg);
+        ress.add(R.drawable.icon_markh);
+        ress.add(R.drawable.icon_marki);
+        ress.add(R.drawable.icon_markj);
+        for (int i = 0; i < ress.size(); i++) {
+            BitmapDescriptor bitmap = BitmapDescriptorFactory
+                    .fromResource(ress.get(i));
+            bitmaps.add(bitmap);
+        }
+    }
+
+    public void drawPath(Route route) {
+        distance = 0;
+        duration = 0;
+        list = route.getList();
+        map.clear();
         LatLng first = list.get(0);
         BitmapDescriptor bitmap = BitmapDescriptorFactory
                 .fromResource(R.drawable.location_marker);
         OverlayOptions option1 = new MarkerOptions().icon(bitmap)
                 .position(first);
         map.addOverlay(option1);
-
-
         OnGetRoutePlanResultListener listener = new OnGetRoutePlanResultListener() {
             @Override
             public void onGetWalkingRouteResult(WalkingRouteResult walkingRouteResult) {
@@ -66,10 +99,10 @@ public class PathPainter {
                     WalkingRouteLine routeLine = routeLines.get(i);
                     PathPainter.this.distance += routeLine.getDistance();
                     PathPainter.this.duration += routeLine.getDuration();
-                    activity.setTextView(R.id.distanceText,String.valueOf(distance)+"M");
-                    activity.setTextView(R.id.durationText,String.valueOf(duration/60)+"min");
-                    activity.setTextView(R.id.speedText,String.valueOf(Double.valueOf(distance*1.0/1000/(duration*1.0/3600)).intValue())+"KM/H");
-                    Log.e("distance",String.valueOf("route"+i+":"+routeLine.getDistance()));
+                    activity.setTextView(R.id.distanceText, String.valueOf(distance) + "M");
+                    activity.setTextView(R.id.durationText, String.valueOf(duration / 60) + "min");
+                    activity.setTextView(R.id.speedText, String.valueOf(Double.valueOf(distance * 1.0 / 1000 / (duration * 1.0 / 3600)).intValue()) + "KM/H");
+                    Log.e("distance", String.valueOf("route" + i + ":" + routeLine.getDistance()));
                     List<WalkingRouteLine.WalkingStep> steps = routeLine.getAllStep();
                     for (int j = 0; j < steps.size(); j++) {
                         WalkingRouteLine.WalkingStep step = steps.get(j);
@@ -113,17 +146,26 @@ public class PathPainter {
             }
         };
 
-
+        OverlayOptions option;
         for (int i = 1; i < list.size(); i++) {
-            OverlayOptions option = new MarkerOptions().icon(bitmap)
-                    .position(list.get(i));
+            if (i != list.size() - 1) {
+                option = new MarkerOptions().icon(bitmaps.get(i))
+                        .position(list.get(i));
+                map.addOverlay(option);
+            }
             PlanNode st = PlanNode.withLocation(list.get(i - 1));
             PlanNode en = PlanNode.withLocation(list.get(i));
             RoutePlanSearch search = RoutePlanSearch.newInstance();
             search.setOnGetRoutePlanResultListener(listener);
             search.walkingSearch(new WalkingRoutePlanOption().from(st).to(en));
-            map.addOverlay(option);
-            //search.destroy();
+
         }
+        option = new MarkerOptions().icon(bitmap_st)
+                .position(list.get(0));
+        map.addOverlay(option);
+        option = new MarkerOptions().icon(bitmap_en)
+                .position(list.get(list.size() - 1));
+        map.addOverlay(option);
+
     }
 }
