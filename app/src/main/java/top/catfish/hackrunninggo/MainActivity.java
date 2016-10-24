@@ -108,7 +108,19 @@ public class MainActivity extends BaseAppCompatActivity
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this,"Start!",Toast.LENGTH_SHORT);
+                mBaiduMap.clear();
+                routeNameTextView.setText("");
+                setTextView(R.id.distanceText, "0M");
+                setTextView(R.id.durationText, "0min");
+                setTextView(R.id.speedText, "0KM/H");
+                double lat = 30.770331, lon = 103.992012;
+                LatLng p = new LatLng(lat, lon);
+                MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(17)
+                        .build();
+                MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
+                        .newMapStatus(mMapStatus);
+                mBaiduMap.animateMapStatus(mMapStatusUpdate);
+                Snackbar.make(getWindow().getDecorView(), "Clear!", Snackbar.LENGTH_SHORT).show();
             }
         });
 
@@ -125,17 +137,15 @@ public class MainActivity extends BaseAppCompatActivity
         routeAdapter.setOnItemClickListener(new RouteAdapter.OnRecyclerViewItemClickListener() {
             @Override
             public void onItemClick(View view, String data) {
-                //Log.i("view type",String.valueOf(view.getId()));
-
-
                 int pos = Integer.valueOf((String)view.getTag());
-                Snackbar.make(MainActivity.this.getCurrentFocus(), "Count:"+mLayoutManager.getItemCount()+" pos:"+view.getTag(), Snackbar.LENGTH_SHORT).show();
+
                 View tView = mLayoutManager.findViewByPosition(pos);
                 for(int i=0;i<mLayoutManager.getChildCount();i++){
                     RouteAdapter.ViewHolder tViewHolder = new RouteAdapter.ViewHolder(mLayoutManager.getChildAt(i));
                     tViewHolder.image.setVisibility(View.GONE);
                 }
                 RouteAdapter.ViewHolder viewHolder = new RouteAdapter.ViewHolder(tView);
+                String msg;
                 if(pos == routeAdapter.selectPos){
                     routeAdapter.selectPos = -1;
                     mBaiduMap.clear();
@@ -143,6 +153,8 @@ public class MainActivity extends BaseAppCompatActivity
                     setTextView(R.id.distanceText, "0M");
                     setTextView(R.id.durationText, "0min");
                     setTextView(R.id.speedText, "0KM/H");
+                    Route route = lists.get(pos);
+                    msg = "Deselect "+route.getName();
                 }else{
                     viewHolder.image.setVisibility(View.VISIBLE);
                     routeAdapter.selectPos = pos;
@@ -150,7 +162,9 @@ public class MainActivity extends BaseAppCompatActivity
                     painter.drawPath(route);
                     fitMapStatus(route);
                     routeNameTextView.setText(route.getName());
+                    msg = "Select "+route.getName();
                 }
+                Snackbar.make(getWindow().getDecorView(), msg, Snackbar.LENGTH_SHORT).show();
                 dialog.dismiss();
 
             }
