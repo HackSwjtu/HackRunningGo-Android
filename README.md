@@ -1,6 +1,8 @@
 # HackRunningGo-Android
 Android can run without legs. :sunglasses:
 
+[HackRunningGo-Android Download](https://github.com/HackSwjtu/HackRunningGo-Android/raw/master/app/app-release.apk)
+
 ## Screenshot
 
 ### Sign in
