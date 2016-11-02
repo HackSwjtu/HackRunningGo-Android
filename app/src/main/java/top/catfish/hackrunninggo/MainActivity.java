@@ -4,7 +4,9 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
@@ -25,6 +27,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,27 +50,42 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import top.catfish.hackrunninggo.Utils.PathPainter;
+import top.catfish.hackrunninggo.Utils.SerializableMap;
 import top.catfish.hackrunninggo.Utils.Util;
 import top.catfish.hackrunninggo.adapter.RouteAdapter;
 import top.catfish.hackrunninggo.dao.Route;
+import top.catfish.hackrunninggo.dao.User;
+import top.catfish.hackrunninggo.manager.ImageManager;
 
 public class MainActivity extends BaseAppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     MapView mMapView = null;
     BaiduMap mBaiduMap = null;
     String username = null;
+    String password = null;
+    String deviceID = null;
     List<Route> lists = null;
     AlertDialog dialog = null;
     LinearLayoutManager mLayoutManager = null;
     RouteAdapter routeAdapter = null;
-    TextView routeNameTextView = null;
     PathPainter painter = null;
+    TextView usernameTextView,nameTextView,departTextView;
+    ImageView iconImageView;
+    boolean isLogin;
+    Map<String,String> userData;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Intent intent = getIntent();
+        Bundle bundle = intent.getBundleExtra("bundle");
+        SerializableMap smap = (SerializableMap) bundle.getSerializable("data");
+        userData = smap.getMap();
+        isLogin = true;
         SharedPreferences sharedPreferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
 
         //BaiduMap
@@ -75,9 +93,10 @@ public class MainActivity extends BaseAppCompatActivity
         setContentView(R.layout.activity_main);
         username = sharedPreferences.getString(Util.spLoginUsername,
                 "Name");
+        password = sharedPreferences.getString(Util.spLoginPassword,"Pass");
+        deviceID = sharedPreferences.getString(Util.spDeviceID,"None");
         TextView usernameTextView = (TextView)findViewById(R.id.username_text);
         usernameTextView.setText(username);
-        routeNameTextView = (TextView)this.findViewById(R.id.location_name_text);
         //SlideBar Init
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -90,7 +109,20 @@ public class MainActivity extends BaseAppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
+        View headerView = navigationView.getHeaderView(0);
+        //header widgets
+        usernameTextView = (TextView)headerView.findViewById(R.id.username_text);
+        usernameTextView.setText(username);
+        nameTextView  = (TextView)headerView.findViewById(R.id.name_text);
+        nameTextView.setText(userData.get("name"));
+        departTextView = (TextView)headerView.findViewById(R.id.depart_text);
+        departTextView.setText(userData.get("depart"));
+        iconImageView = (ImageView)headerView.findViewById(R.id.icon_image);
+        ImageManager imageManager = new ImageManager(MainActivity.this);
+        Log.i("userData",userData.get("uid"));
+        Log.i("userData",userData.get("icon"));
+        UpdateProfileUIAction updateProfileUITask = new UpdateProfileUIAction(userData.get("uid"),userData.get("icon"),imageManager);
+        updateProfileUITask.execute((Void)null);
         //BaiduMap init
         mMapView = (MapView) findViewById(R.id.bMapView);
         mBaiduMap = mMapView.getMap();
@@ -109,7 +141,7 @@ public class MainActivity extends BaseAppCompatActivity
             @Override
             public void onClick(View v) {
                 mBaiduMap.clear();
-                routeNameTextView.setText("");
+                setTextView(R.id.location_name_text,"");
                 setTextView(R.id.distanceText, "0M");
                 setTextView(R.id.durationText, "0min");
                 setTextView(R.id.speedText, "0KM/H");
@@ -149,7 +181,7 @@ public class MainActivity extends BaseAppCompatActivity
                 if(pos == routeAdapter.selectPos){
                     routeAdapter.selectPos = -1;
                     mBaiduMap.clear();
-                    routeNameTextView.setText("");
+                    //setTextView(R.id.location_name_text,"");
                     setTextView(R.id.distanceText, "0M");
                     setTextView(R.id.durationText, "0min");
                     setTextView(R.id.speedText, "0KM/H");
@@ -161,7 +193,7 @@ public class MainActivity extends BaseAppCompatActivity
                     Route route = lists.get(pos);
                     painter.drawPath(route);
                     fitMapStatus(route);
-                    routeNameTextView.setText(route.getName());
+                    //setTextView(R.id.location_name_text,route.getName());
                     msg = "Select "+route.getName();
                 }
                 Snackbar.make(getWindow().getDecorView(), msg, Snackbar.LENGTH_SHORT).show();
@@ -207,6 +239,8 @@ public class MainActivity extends BaseAppCompatActivity
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.remove(Util.spLoginStamp);
             boolean flag = editor.commit();
+            LogoutAction logoutActionTask = new LogoutAction(username,password,deviceID);
+            logoutActionTask.execute((Void)null);
             Intent intent = new Intent();
             intent.setClass(this,LoginActivity.class);
             startActivity(intent);
@@ -222,6 +256,9 @@ public class MainActivity extends BaseAppCompatActivity
 
     @Override
     protected void onDestroy() {
+        isLogin = false;
+        LogoutAction logoutActionTask = new LogoutAction(username,password,deviceID);
+        logoutActionTask.execute((Void)null);
         super.onDestroy();
         //在activity执行onDestroy时执行mMapView.onDestroy()，实现地图生命周期管理
         mMapView.onDestroy();
@@ -240,7 +277,19 @@ public class MainActivity extends BaseAppCompatActivity
         //在activity执行onPause时执行mMapView. onPause ()，实现地图生命周期管理
         mMapView.onPause();
     }
-
+    @Override
+    protected void onStop() {
+        isLogin = false;
+        LogoutAction logoutActionTask = new LogoutAction(username,password,deviceID);
+        logoutActionTask.execute((Void)null);
+        super.onStop();
+    }
+    @Override
+    protected void onRestart() {
+        LoginAction loginActionTask = new LoginAction(username,password,deviceID);
+        loginActionTask.execute((Void)null);
+        super.onRestart();
+    }
     public void setTextView(int id, String msg) {
         TextView tv = (TextView) this.findViewById(id);
         tv.setText(msg);
@@ -314,7 +363,76 @@ public class MainActivity extends BaseAppCompatActivity
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public class LogoutAction extends AsyncTask<Void,Void,Map<String,String>>{
+        private String mUsername;
+        private String mPassword;
+        private String mDeviceID;
+        public LogoutAction(String mUsername,String mPassword,String mDeviceID){
+            this.mUsername = mUsername;
+            this.mPassword = mPassword;
+            this.mDeviceID = mDeviceID;
+        }
+        @Override
+        protected Map<String, String> doInBackground(Void... params) {
+            User user = new User(mUsername,mPassword,mDeviceID);
+            return user.logout();
+        }
+        @Override
+        protected void onPostExecute(Map<String,String> result) {
 
+        }
+    }
+    public class LoginAction extends AsyncTask<Void,Void,Map<String,String>>{
+        private String mUsername;
+        private String mPassword;
+        private String mDeviceID;
+        public LoginAction(String mUsername,String mPassword,String mDeviceID){
+            this.mUsername = mUsername;
+            this.mPassword = mPassword;
+            this.mDeviceID = mDeviceID;
+        }
+        @Override
+        protected Map<String, String> doInBackground(Void... params) {
+            User user = new User(mUsername,mPassword,mDeviceID);
+            return user.login(null);
+        }
+        @Override
+        protected void onPostExecute(Map<String,String> result) {
+            if(result.get("state").compareTo(Util.stateSuccess)==0) {
+                SharedPreferences preferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putString(Util.spLoginUsername, mUsername);
+                editor.putString(Util.spLoginPassword, mPassword);
+                editor.putLong(Util.spLoginStamp, new Date().getTime());
+                editor.putString(Util.spDeviceID, deviceID);
+                editor.putString(Util.spUID, result.get("uid"));
+                boolean flag = editor.commit();
+            }
+        }
+    }
+    public class UpdateProfileUIAction extends AsyncTask<Void,Void,Bitmap>{
+        private String uid;
+        private String iconUrl;
+        private ImageManager imageManager;
+        public UpdateProfileUIAction(String uid,String iconUrl,ImageManager imageManager){
+            this.uid = uid;
+            this.iconUrl = iconUrl;
+            this.imageManager = imageManager;
+        }
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+
+            return  imageManager.getImage(Util.MD532(userData.get("uid")),userData.get("icon"));
+        }
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            Log.i("ImageManager",String.valueOf(bitmap.getByteCount()));
+            Log.i("ImageManager",String.valueOf(bitmap.getAllocationByteCount()));
+            Log.i("ImageManager",String.valueOf(bitmap.getHeight()+" - "+bitmap.getWidth()));
+            if(null != bitmap)
+                iconImageView.setImageBitmap(bitmap);
+        }
     }
 }
 

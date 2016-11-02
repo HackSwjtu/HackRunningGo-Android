@@ -11,6 +11,7 @@ import android.os.AsyncTask;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -23,8 +24,11 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import java.util.Date;
+import java.util.Map;
 
+import top.catfish.hackrunninggo.Utils.SerializableMap;
 import top.catfish.hackrunninggo.Utils.Util;
+import top.catfish.hackrunninggo.dao.User;
 
 /*
  * Created by Catfish on 2016/10/20.
@@ -46,7 +50,7 @@ public class LoginActivity extends BaseAppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-        loginByData();
+        boolean logined = loginByData();
         // Set up the login form.
         mUsernameView = (AutoCompleteTextView) findViewById(R.id.username);
         mPasswordView = (EditText) findViewById(R.id.password);
@@ -65,6 +69,8 @@ public class LoginActivity extends BaseAppCompatActivity {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+        if(logined)
+            attemptLogin();
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -184,43 +190,55 @@ public class LoginActivity extends BaseAppCompatActivity {
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+    public class UserLoginTask extends AsyncTask<Void, Void, Map<String,String>> {
 
         private final String mUsername;
         private final String mPassword;
+        private final String deviceID;
 
         UserLoginTask(String username, String password) {
             mUsername = username;
             mPassword = password;
+            deviceID = Settings.Secure.getString(getContentResolver(),
+                    Settings.Secure.ANDROID_ID);
         }
 
         @Override
-        protected Boolean doInBackground(Void... params) {
+        protected Map<String,String> doInBackground(Void... params) {
             // TODO: attempt authentication against a network service.
             //Username Check
             //Password Check
-            return true;
+            User user = new User(this.mUsername,this.mPassword,this.deviceID);
+            return user.login(null);
         }
 
         @Override
-        protected void onPostExecute(final Boolean success) {
+        protected void onPostExecute(Map<String,String> result) {
             mAuthTask = null;
             showProgress(false);
 
-            if (success) {
+            if (result.get("state").compareTo(Util.stateSuccess)==0) {
                 //Store the data
+
                 SharedPreferences preferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
+
                 SharedPreferences.Editor editor = preferences.edit();
                 editor.putString(Util.spLoginUsername,mUsername);
                 editor.putString(Util.spLoginPassword,mPassword);
                 editor.putLong(Util.spLoginStamp,new Date().getTime());
+                editor.putString(Util.spDeviceID,deviceID);
+                editor.putString(Util.spUID,result.get("uid"));
                 boolean flag = editor.commit();
                 //Goto MainActivity
-                LoginActivity.this.toMainActivity();
+                SerializableMap smap = new SerializableMap();
+                smap.setMap(result);
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("data",smap);
+                LoginActivity.this.toMainActivity(bundle);
                 //Finish LoginActivity
                 finish();
             } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
+                mPasswordView.setError(result.get("msg"));
                 mPasswordView.requestFocus();
             }
         }
@@ -231,29 +249,26 @@ public class LoginActivity extends BaseAppCompatActivity {
             showProgress(false);
         }
     }
-    public void toMainActivity(){
+    public void toMainActivity(Bundle bundle){
         Intent intent = new Intent();
+        intent.putExtra("bundle",bundle);
         intent.setClass(LoginActivity.this,MainActivity.class);
         startActivity(intent);
         finish();
     }
-    public void loginByData(){
+    public boolean loginByData(){
         SharedPreferences preferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
         long time = preferences.getLong(Util.spLoginStamp,0);
-        Toast.makeText(getApplicationContext(),String.valueOf(time),Toast.LENGTH_SHORT);
+        //Toast.makeText(getApplicationContext(),String.valueOf(time),Toast.LENGTH_SHORT);
         if(0 == time){
-            return;
+            return false;
         }
         long now = new Date().getTime();
         //Check the time interval is less than 604800 s (7days/a week)
-        if(now - time > 604800){
-            return;
+        if(now - time > 604800000){
+            return false;
         }
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putLong(Util.spLoginStamp,now);
-        editor.apply();
-        toMainActivity();
-        finish();
+        return true;
     }
 }
 
