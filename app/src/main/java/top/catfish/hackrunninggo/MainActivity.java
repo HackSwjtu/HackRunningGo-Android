@@ -61,6 +61,7 @@ import top.catfish.hackrunninggo.adapter.RouteAdapter;
 import top.catfish.hackrunninggo.dao.Route;
 import top.catfish.hackrunninggo.dao.User;
 import top.catfish.hackrunninggo.manager.ImageManager;
+import top.catfish.hackrunninggo.manager.RouteManager;
 
 public class MainActivity extends BaseAppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -69,7 +70,7 @@ public class MainActivity extends BaseAppCompatActivity
     String username = null;
     String password = null;
     String deviceID = null;
-    List<Route> lists = null;
+    //List<Route> lists = null;
     AlertDialog dialog = null;
     LinearLayoutManager mLayoutManager = null;
     RouteAdapter routeAdapter = null;
@@ -77,7 +78,10 @@ public class MainActivity extends BaseAppCompatActivity
     TextView usernameTextView,nameTextView,departTextView;
     ImageView iconImageView;
     boolean isLogin;
+    User user;
     Map<String,String> userData;
+    RouteManager routeManager = null;
+    RecyclerView mView = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -95,8 +99,14 @@ public class MainActivity extends BaseAppCompatActivity
                 "Name");
         password = sharedPreferences.getString(Util.spLoginPassword,"Pass");
         deviceID = sharedPreferences.getString(Util.spDeviceID,"None");
+        user = new User(username,password,deviceID);
+        routeManager = new RouteManager(user);
+        UpdateRoutesListAction updateRoutesListTask = new UpdateRoutesListAction(routeManager);
+        updateRoutesListTask.execute((Void)null);
         TextView usernameTextView = (TextView)findViewById(R.id.username_text);
         usernameTextView.setText(username);
+
+
         //SlideBar Init
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -119,8 +129,8 @@ public class MainActivity extends BaseAppCompatActivity
         departTextView.setText(userData.get("depart"));
         iconImageView = (ImageView)headerView.findViewById(R.id.icon_image);
         ImageManager imageManager = new ImageManager(MainActivity.this);
-        Log.i("userData",userData.get("uid"));
-        Log.i("userData",userData.get("icon"));
+        //Log.i("userData",userData.get("uid"));
+        //Log.i("userData",userData.get("icon"));
         UpdateProfileUIAction updateProfileUITask = new UpdateProfileUIAction(userData.get("uid"),userData.get("icon"),imageManager);
         updateProfileUITask.execute((Void)null);
         //BaiduMap init
@@ -156,16 +166,16 @@ public class MainActivity extends BaseAppCompatActivity
             }
         });
 
-        getData();
+        //getData();
         //Dialog
         LayoutInflater inflater = (LayoutInflater) MainActivity.this.getSystemService(LAYOUT_INFLATER_SERVICE);
         View layout = inflater.inflate(R.layout.popup_view, (ViewGroup)findViewById(R.id.popup_window_layout));
-        RecyclerView mView = (RecyclerView)layout.findViewById(R.id.pupup_recyclerView);
+        mView = (RecyclerView)layout.findViewById(R.id.pupup_recyclerView);
         mView.setHasFixedSize(true);
         mLayoutManager = new LinearLayoutManager(this);
         mLayoutManager.setOrientation(OrientationHelper.VERTICAL);
         mView.setLayoutManager(mLayoutManager);
-        routeAdapter = new RouteAdapter(MainActivity.this,lists);
+        routeAdapter = new RouteAdapter(MainActivity.this,routeManager.getRoutesList());
         routeAdapter.setOnItemClickListener(new RouteAdapter.OnRecyclerViewItemClickListener() {
             @Override
             public void onItemClick(View view, String data) {
@@ -185,12 +195,12 @@ public class MainActivity extends BaseAppCompatActivity
                     setTextView(R.id.distanceText, "0M");
                     setTextView(R.id.durationText, "0min");
                     setTextView(R.id.speedText, "0KM/H");
-                    Route route = lists.get(pos);
+                    Route route = routeManager.getRoute(pos);
                     msg = "Deselect "+route.getName();
                 }else{
                     viewHolder.image.setVisibility(View.VISIBLE);
                     routeAdapter.selectPos = pos;
-                    Route route = lists.get(pos);
+                    Route route = routeManager.getRoute(pos);
                     painter.drawPath(route);
                     fitMapStatus(route);
                     //setTextView(R.id.location_name_text,route.getName());
@@ -305,7 +315,7 @@ public class MainActivity extends BaseAppCompatActivity
         avgLon/=list.size();
         for(int i=0;i<list.size();i++){
             for(int j=i+1;j<list.size();j++){
-                double dis = getDistance(list.get(i),list.get(j));
+                double dis = Util.getDistance(list.get(i),list.get(j));
                 if(dis>maxDis)
                     maxDis = dis;
             }
@@ -327,19 +337,9 @@ public class MainActivity extends BaseAppCompatActivity
         mBaiduMap.animateMapStatus(mMapStatusUpdate);
         Log.e("distance",String.valueOf(maxDis));
     }
-    private double getDistance(LatLng p1,LatLng p2) {
-        double radLat1 = Math.toRadians (p1.latitude);
-        double radLat2 = Math.toRadians (p2.latitude);
-        double a = radLat1 - radLat2;
-        double b = Math.toRadians (p1.longitude) - Math.toRadians (p2.longitude);
-        double s = 2 * Math. asin(Math .sqrt(
-                Math.pow (Math. sin(a / 2), 2) + Math.cos (radLat1) * Math.cos (radLat2) * Math.pow (Math. sin(b / 2), 2))) ;
-        s = s * 6378137.0 ;// 取WGS84标准参考椭球中的地球长半径(单位:m)
-        s = Math. round(s * 10000) / 10000 ;
-        return s ;
-    }
 
 
+    /*
     public void getData() {
         lists = new ArrayList<>();
         InputStream is = getResources().openRawResource(R.raw.route);
@@ -357,13 +357,14 @@ public class MainActivity extends BaseAppCompatActivity
                     LatLng latLng = new LatLng(Double.valueOf(datas[1]), Double.valueOf(datas[0]));
                     list.add(latLng);
                 }
-                Route route = new Route(name,list);
-                lists.add(route);
+                //Route route = new Route(name,list);
+               // lists.add(route);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+    */
     public class LogoutAction extends AsyncTask<Void,Void,Map<String,String>>{
         private String mUsername;
         private String mPassword;
@@ -427,11 +428,34 @@ public class MainActivity extends BaseAppCompatActivity
         }
         @Override
         protected void onPostExecute(Bitmap bitmap) {
-            Log.i("ImageManager",String.valueOf(bitmap.getByteCount()));
-            Log.i("ImageManager",String.valueOf(bitmap.getAllocationByteCount()));
-            Log.i("ImageManager",String.valueOf(bitmap.getHeight()+" - "+bitmap.getWidth()));
-            if(null != bitmap)
+
+            if(null != bitmap) {
+                Log.i("ImageManager",String.valueOf(bitmap.getByteCount()));
+                Log.i("ImageManager",String.valueOf(bitmap.getAllocationByteCount()));
+                Log.i("ImageManager",String.valueOf(bitmap.getHeight()+" - "+bitmap.getWidth()));
                 iconImageView.setImageBitmap(bitmap);
+            }else{
+                iconImageView.setImageResource(R.drawable.ic_hackswjtu);
+            }
+        }
+    }
+    public class UpdateRoutesListAction extends AsyncTask<Void,Void,Boolean>{
+        private RouteManager routeManager;
+        public UpdateRoutesListAction(RouteManager routeManager){
+            this.routeManager = routeManager;
+        }
+        @Override
+        protected Boolean doInBackground(Void... params) {
+
+            routeManager.updateRoutesData(routeAdapter);
+            return true;
+        }
+        @Override
+        protected void onPostExecute(Boolean success) {
+
+            if(success) {
+                routeAdapter.notifyDataSetChanged();
+            }
         }
     }
 }

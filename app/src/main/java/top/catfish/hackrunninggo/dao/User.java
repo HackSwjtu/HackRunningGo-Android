@@ -6,6 +6,7 @@ package top.catfish.hackrunninggo.dao;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import org.apache.commons.codec.binary.Base64;
 import org.json.JSONException;
@@ -26,7 +27,7 @@ public class User {
     public static String loginURL = "http://gxapp.iydsj.com/api/v3/login";
     public static String logoutURL = "http://gxapp.iydsj.com/api/v2/user/logout";
     public static String runDataUpdateURL = "";
-    private String username,password,deviceID,uid;
+    private String username,password,deviceID,uid = null;
     private NetworkUtil network;
     private int logState;
     public User(String username,String password,String deviceID){
@@ -39,7 +40,7 @@ public class User {
         Map<String,String> result = new HashMap<>();
         result.put("state",Util.stateError);
         result.put("msg","网络错误");
-        Map<String,String> header = getHeader(uid);
+        Map<String,String> header = getHeader();
         Map<String,String> response = NetworkUtil.sendPost(loginURL,header,null);
         if(response.get("state")==String.valueOf(NetworkUtil.HTTP_OK)) {
             try {
@@ -50,13 +51,16 @@ public class User {
                     //登录成功，记录相关信息
                     result.put("state",Util.stateSuccess);
                     JSONObject dataObject = (JSONObject)jsonObject.get("data");
-                    result.put("msg",(String)jsonObject.get("message"));
-                    result.put("uid",String.valueOf((int)dataObject.get("uid")));
+                    result.put("msg",jsonObject.get("message").toString());
+                    this.uid = String.valueOf((int)dataObject.get("uid"));
+                    result.put("uid",this.uid);
                     result.put("unid",String.valueOf((int)dataObject.get("unid")));
-                    result.put("name",(String)dataObject.get("name"));
-                    result.put("icon",(String)dataObject.get("icon"));
-                    result.put("campusId",(String)dataObject.get("campusId"));
-                    result.put("depart",(String)dataObject.get("depart"));
+                    result.put("name",dataObject.get("name").toString());
+                    Log.i("JSON",dataObject.get("icon").toString());
+                    if(dataObject.get("icon").toString() != "null");
+                        result.put("icon",dataObject.get("icon").toString());
+                    result.put("campusId",dataObject.get("campusId").toString());
+                    result.put("depart",dataObject.get("depart").toString());
                 }else{
                     //登陆失败，记录错误信息
                     result.put("msg",(String)jsonObject.get("message"));
@@ -71,7 +75,7 @@ public class User {
         Map<String,String> result = new HashMap<>();
         result.put("state",Util.stateError);
         result.put("msg","网络错误");
-        Map<String,String> header = getHeader(uid);
+        Map<String,String> header = getHeader();
         Map<String,String> response = NetworkUtil.sendPost(logoutURL,header,null);
         if(response.get("state")==String.valueOf(NetworkUtil.HTTP_OK)) {
             try {
@@ -98,7 +102,7 @@ public class User {
     public void updateData(){
 
     }
-    private Map<String,String> getHeader(String uid){
+    public Map<String,String> getHeader(){
         Map<String,String> header = new HashMap<>();
         header.put("Accept","application/json");
         header.put("Content-Type","application/json");
@@ -107,8 +111,8 @@ public class User {
         header.put("appVersion","1.2.0");
         header.put("osType","0");
         header.put("CustomDeviceId",Util.MD532(deviceID));
-        if(null != uid)
-            header.put("uid",uid);
+        if(null != this.uid)
+            header.put("uid",this.uid);
         StringBuffer sb = new StringBuffer();
         sb.append(username);
         sb.append(":");

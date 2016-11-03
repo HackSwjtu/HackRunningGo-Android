@@ -41,7 +41,10 @@ public class RouteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
         ViewHolder vHolder = (ViewHolder) holder;
-        vHolder.tv.setText(list.get(position).getName());
+        Route route = list.get(position);
+        if(null == route)
+            return;
+        vHolder.tv.setText(route.getName());
         vHolder.view.setTag(String.valueOf(position));
         if (selectPos == position) {
             vHolder.image.setVisibility(View.VISIBLE);

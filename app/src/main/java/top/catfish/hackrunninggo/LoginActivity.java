@@ -219,7 +219,7 @@ public class LoginActivity extends BaseAppCompatActivity {
 
             if (result.get("state").compareTo(Util.stateSuccess)==0) {
                 //Store the data
-
+                Log.i("Result",result.toString());
                 SharedPreferences preferences = getApplicationContext().getSharedPreferences(Util.spLoginData, Context.MODE_PRIVATE);
 
                 SharedPreferences.Editor editor = preferences.edit();

@@ -21,6 +21,36 @@ import java.util.Map;
 public class NetworkUtil {
     public final static int HTTP_ERROR = 0;
     public final static int HTTP_OK = 1;
+    public static Map<String,String> sendGet(String urlstr,Map<String,String> header){
+        HttpURLConnection connection;
+        Map<String,String> result = new HashMap<>();
+        result.put("state",String.valueOf(HTTP_ERROR));
+        try {
+            URL url = new URL(urlstr);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.setRequestMethod("GET");
+            for(Map.Entry<String,String> entry : header.entrySet()) {
+                connection.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+            int responseCode = connection.getResponseCode();
+            if(responseCode == HttpURLConnection.HTTP_OK){
+                StringBuffer sb = new StringBuffer();
+                String readLine;
+                BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream(),"UTF-8"));
+                while((readLine = br.readLine())!=null){
+                    sb.append(readLine+'\n');
+                }
+                br.close();
+                result.put("result",sb.toString());
+                result.put("state",String.valueOf(HTTP_OK));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            return result;
+        }
+        return result;
+    }
     public static Map<String,String> sendPost(String urlstr,Map<String,String> header,String body) {
         HttpURLConnection connection;
         Map<String,String> result = new HashMap<>();

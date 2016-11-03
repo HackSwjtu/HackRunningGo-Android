@@ -4,6 +4,8 @@ package top.catfish.hackrunninggo.Utils;
  * Created by Catfish on 2016/10/20.
  */
 
+import com.baidu.mapapi.model.LatLng;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -37,5 +39,23 @@ public class Util {
             System.out.println(e);
         }
         return result.toUpperCase();
+    }
+    public static double  getDistance(LatLng p1, LatLng p2) {
+        double radLat1 = Math.toRadians (p1.latitude);
+        double radLat2 = Math.toRadians (p2.latitude);
+        double a = radLat1 - radLat2;
+        double b = Math.toRadians (p1.longitude) - Math.toRadians (p2.longitude);
+        double s = 2 * Math. asin(Math .sqrt(
+                Math.pow (Math. sin(a / 2), 2) + Math.cos (radLat1) * Math.cos (radLat2) * Math.pow (Math. sin(b / 2), 2))) ;
+        s = s * 6378137.0 ;// 取WGS84标准参考椭球中的地球长半径(单位:m)
+        s = Math. round(s * 10000) / 10000 ;
+        return s ;
+    }
+    public static String formatJsonString(String input){
+        String output;
+        output = input.replaceAll("\n", "").replaceAll("\\\"[\\t\\s]*\\[", "[")
+                .replaceAll("\\][\\t\\s]*\\\"", "]").replaceAll("\\\"[\\t\\s]*\\{", "{")
+                .replaceAll("\\}[\\t\\s]*\\\"", "}").replaceAll("\\\\", "").replaceAll("\\][\\t\\s]*\\\"", "]");
+        return output;
     }
 }
