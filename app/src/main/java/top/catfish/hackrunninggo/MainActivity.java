@@ -75,7 +75,7 @@ public class MainActivity extends BaseAppCompatActivity
     LinearLayoutManager mLayoutManager = null;
     RouteAdapter routeAdapter = null;
     PathPainter painter = null;
-    TextView usernameTextView,nameTextView,departTextView;
+    TextView usernameTextView,nameTextView,departTextView,locNameTextView;
     ImageView iconImageView;
     boolean isLogin;
     User user;
@@ -103,8 +103,8 @@ public class MainActivity extends BaseAppCompatActivity
         routeManager = new RouteManager(user);
         UpdateRoutesListAction updateRoutesListTask = new UpdateRoutesListAction(routeManager);
         updateRoutesListTask.execute((Void)null);
-        TextView usernameTextView = (TextView)findViewById(R.id.username_text);
-        usernameTextView.setText(username);
+        locNameTextView = (TextView)findViewById(R.id.location_name_text1);
+
 
 
         //SlideBar Init
@@ -136,13 +136,7 @@ public class MainActivity extends BaseAppCompatActivity
         //BaiduMap init
         mMapView = (MapView) findViewById(R.id.bMapView);
         mBaiduMap = mMapView.getMap();
-        double lat = 30.770331, lon = 103.992012;
-        LatLng p = new LatLng(lat, lon);
-        MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(17)
-                .build();
-        MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
-                .newMapStatus(mMapStatus);
-        mBaiduMap.animateMapStatus(mMapStatusUpdate);
+        clearMapStatus();
         painter = new PathPainter(mBaiduMap, MainActivity.this);
 
         Button btn = (Button) findViewById(R.id.startBtn);
@@ -151,17 +145,11 @@ public class MainActivity extends BaseAppCompatActivity
             @Override
             public void onClick(View v) {
                 mBaiduMap.clear();
-                setTextView(R.id.location_name_text,"");
+                setTextView(R.id.location_name_text1,"");
                 setTextView(R.id.distanceText, "0M");
                 setTextView(R.id.durationText, "0min");
                 setTextView(R.id.speedText, "0KM/H");
-                double lat = 30.770331, lon = 103.992012;
-                LatLng p = new LatLng(lat, lon);
-                MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(17)
-                        .build();
-                MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
-                        .newMapStatus(mMapStatus);
-                mBaiduMap.animateMapStatus(mMapStatusUpdate);
+                clearMapStatus();
                 Snackbar.make(getWindow().getDecorView(), "Clear!", Snackbar.LENGTH_SHORT).show();
             }
         });
@@ -197,6 +185,8 @@ public class MainActivity extends BaseAppCompatActivity
                     setTextView(R.id.speedText, "0KM/H");
                     Route route = routeManager.getRoute(pos);
                     msg = "Deselect "+route.getName();
+                    locNameTextView.setText(route.getName());
+                    clearMapStatus();
                 }else{
                     viewHolder.image.setVisibility(View.VISIBLE);
                     routeAdapter.selectPos = pos;
@@ -205,8 +195,11 @@ public class MainActivity extends BaseAppCompatActivity
                     fitMapStatus(route);
                     //setTextView(R.id.location_name_text,route.getName());
                     msg = "Select "+route.getName();
+                    locNameTextView.setText(route.getName());
                 }
                 Snackbar.make(getWindow().getDecorView(), msg, Snackbar.LENGTH_SHORT).show();
+
+
                 dialog.dismiss();
 
             }
@@ -303,6 +296,15 @@ public class MainActivity extends BaseAppCompatActivity
     public void setTextView(int id, String msg) {
         TextView tv = (TextView) this.findViewById(id);
         tv.setText(msg);
+    }
+    public void clearMapStatus(){
+        double lat = 30.770331, lon = 103.992012;
+        LatLng p = new LatLng(lat, lon);
+        MapStatus mMapStatus = new MapStatus.Builder().target(p).zoom(17)
+                .build();
+        MapStatusUpdate mMapStatusUpdate = MapStatusUpdateFactory
+                .newMapStatus(mMapStatus);
+        mBaiduMap.animateMapStatus(mMapStatusUpdate);
     }
     public void fitMapStatus(Route route){
         List<LatLng> list = route.getList();
